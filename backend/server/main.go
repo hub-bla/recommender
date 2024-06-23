@@ -26,10 +26,12 @@ const (
 
 var db sql.DB
 
+// TODO: handle db connection properly
+// make dynamic number of similar films in request
+
 type Embedding struct {
-	Idx   int       `json:"id"`
-	Title string    `json:"title"`
-	Data  []float32 `json:"embedding"`
+	Idx  int       `json:"id"`
+	Data []float32 `json:"embedding"`
 }
 
 type SimilarTitle struct {
@@ -41,15 +43,16 @@ type SearchbarInput struct {
 	Data string `json:"searchbar_input"`
 }
 
+var fetchedEmbeddings map[int]string
+
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		// GET TEXT TO MAKE EMBEDDING FROM IT
-		fmt.Printf("test")
 
 		resBody, err := io.ReadAll(r.Body)
 
 		if err != nil {
-			fmt.Printf("Couldn't read a response Body!\n")
+			fmt.Println("something went wrong in reading body")
+			defer w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
@@ -62,7 +65,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		res, err := http.Post(ML_SERVER+"/model/", "application/json", bodyReader)
 
 		if err != nil {
-			fmt.Println("something went wrong in making request")
+			defer w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -70,6 +73,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			fmt.Println("something went wrong in reading body")
+			defer w.WriteHeader(http.StatusUnprocessableEntity)
+			return
 		}
 
 		var titleEmbedding Embedding
@@ -81,31 +86,37 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 		db, err := sql.Open("postgres", psqlInfo)
 		if err != nil {
-			panic(err)
+			defer w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		defer db.Close()
 
 		err = db.Ping()
 		if err != nil {
-			panic(err)
+			defer w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		rows, err := db.Query(`SELECT id, title FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
+		rows, err := db.Query(`SELECT id, title, embedding FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
 
 		if err != nil {
 			fmt.Printf("DB Error: %v\n", err)
+			defer w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		var similarTitles []SimilarTitle
+		fetchedEmbeddings = make(map[int]string)
 
 		for rows.Next() {
 			var smimilarT SimilarTitle
-			fmt.Println(rows)
-			if err := rows.Scan(&smimilarT.Idx, &smimilarT.Title); err != nil {
+			var str_embedding string
+			if err := rows.Scan(&smimilarT.Idx, &smimilarT.Title, &str_embedding); err != nil {
 				fmt.Printf("Scanning error %v\n", err)
+				defer w.WriteHeader(http.StatusUnprocessableEntity)
 				return
 			}
+			fetchedEmbeddings[smimilarT.Idx] = str_embedding
 			similarTitles = append(similarTitles, smimilarT)
 		}
 
@@ -118,16 +129,17 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		similarTitlesBytes, err := json.Marshal(similarTitlesMessage)
 		if err != nil {
 			fmt.Printf("Problem with marshal: %v\n", err)
+			defer w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 		w.Write(similarTitlesBytes)
 	}
+	defer w.WriteHeader(http.StatusBadRequest)
 }
 
 func main() {
 
 	http.HandleFunc("/search", searchHandler)
-
 	fmt.Printf("Server runs on: %s\n", GO_SERVER)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
