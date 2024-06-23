@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
+interface Movie {
+  id: Number
+  title: string
+}
+
 function App() {
   const [count, setCount] = useState(0)
   const [searchData, setSearchData] = useState("")
@@ -11,8 +16,19 @@ function App() {
   }, [searchData])
 
   useEffect(() => {
-    console.log("Tutaj leci request")
-    console.log(requestInputData)
+    if (requestInputData != ""){
+      console.log("Tutaj leci request")
+      console.log(requestInputData)
+      const requestOptions = {
+        method: 'POST',
+        body: JSON.stringify({ searchbar_input: requestInputData })
+      }
+      fetch('http://127.0.0.1:8080/search', requestOptions)
+          .then(response => response.json())
+          .then(data => {data["titles"].map((movie:Movie) => {
+            console.log(movie)
+          })})
+      }
   }, [requestInputData])
 
 

@@ -46,8 +46,8 @@ type SearchbarInput struct {
 var fetchedEmbeddings map[int]string
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
 
+	if r.Method == http.MethodPost {
 		resBody, err := io.ReadAll(r.Body)
 
 		if err != nil {
@@ -133,7 +133,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Write(similarTitlesBytes)
+		return
 	}
+
 	defer w.WriteHeader(http.StatusBadRequest)
 }
 
