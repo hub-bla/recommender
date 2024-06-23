@@ -1,17 +1,28 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [searchData, setSearchData] = useState("")
+  const [requestInputData, setRequestInputData] = useState("")
+  useEffect(() => {
+    const timeOutId = setTimeout(() => setRequestInputData(searchData), 500)
+    return () => clearTimeout(timeOutId)
+  }, [searchData])
 
+  useEffect(() => {
+    console.log("Tutaj leci request")
+    console.log(requestInputData)
+  }, [requestInputData])
+
+
+  
   return (
     <>
       <h1>Movie Recommender</h1>
       <div className="card">
         <input type='text' placeholder='Start searching :)'
-        onChange={() => setCount((count) => count +1)}/>
+        onChange={e => setSearchData(e.target.value)}/>
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>
