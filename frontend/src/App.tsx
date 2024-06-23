@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { Movie } from './modules/Movie'
 
-interface Movie {
+interface MovieInterface {
   id: Number
   title: string
 }
@@ -10,6 +11,7 @@ function App() {
   const [count, setCount] = useState(0)
   const [searchData, setSearchData] = useState("")
   const [requestInputData, setRequestInputData] = useState("")
+  const [movieArray, setMovieArray] = useState([])
   useEffect(() => {
     const timeOutId = setTimeout(() => setRequestInputData(searchData), 500)
     return () => clearTimeout(timeOutId)
@@ -25,12 +27,11 @@ function App() {
       }
       fetch('http://127.0.0.1:8080/search', requestOptions)
           .then(response => response.json())
-          .then(data => {data["titles"].map((movie:Movie) => {
-            console.log(movie)
-          })})
+          .then(data => setMovieArray(data['titles']))
       }
   }, [requestInputData])
 
+  const movies = movieArray.map((movie:MovieInterface) => <Movie idx={movie.id} title={movie.title}/>)
 
   
   return (
@@ -39,12 +40,8 @@ function App() {
       <div className="card">
         <input type='text' placeholder='Start searching :)'
         onChange={e => setSearchData(e.target.value)}/>
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
+        
+        {movies}
       </div>
 
     </>
