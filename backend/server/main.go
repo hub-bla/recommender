@@ -24,10 +24,14 @@ const (
 	dbname   = "movie_recommender"
 )
 
-var db sql.DB
+// var db sql.DB
 
 // TODO: handle db connection properly
 // make dynamic number of similar films in request
+
+type searchHandler struct {
+	db *sql.DB
+}
 
 type Embedding struct {
 	Idx  int       `json:"id"`
@@ -40,12 +44,71 @@ type SimilarTitle struct {
 }
 
 type SearchbarInput struct {
-	Data string `json:"searchbar_input"`
+	Data       string `json:"searchbar_input"`
+	SearchType string `json:"search_type"`
 }
 
-var fetchedEmbeddings map[int]string
+func semanticSearch(w *http.ResponseWriter, db *sql.DB, titleEmbedding *Embedding) {
+	rows, err := db.Query(`SELECT id, title FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector((*titleEmbedding).Data))
 
-func searchHandler(w http.ResponseWriter, r *http.Request) {
+	if err != nil {
+		fmt.Printf("DB Error: %v\n", err)
+		defer (*w).WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var similarTitles []SimilarTitle
+
+	for rows.Next() {
+		var smimilarT SimilarTitle
+		if err := rows.Scan(&smimilarT.Idx, &smimilarT.Title); err != nil {
+			fmt.Printf("Scanning error %v\n", err)
+			defer (*w).WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		similarTitles = append(similarTitles, smimilarT)
+	}
+
+	similarTitlesMessage := struct {
+		Titles []SimilarTitle `json:"titles"`
+	}{
+		Titles: similarTitles,
+	}
+
+	similarTitlesBytes, err := json.Marshal(similarTitlesMessage)
+	if err != nil {
+		fmt.Printf("Problem with marshal: %v\n", err)
+		defer (*w).WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	(*w).Write(similarTitlesBytes)
+}
+
+func getSearchbarInputEmbedding(w *http.ResponseWriter, data string) (Embedding, error) {
+	ml_body := []byte(fmt.Sprintf("{\"movie_title\": \"%s\"}", data))
+	bodyReader := bytes.NewReader(ml_body)
+	res, err := http.Post(ML_SERVER+"/model/", "application/json", bodyReader)
+
+	if err != nil {
+		defer (*w).WriteHeader(http.StatusInternalServerError)
+		return Embedding{}, err
+	}
+
+	emb_resBody, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		fmt.Println("something went wrong in reading body")
+		defer (*w).WriteHeader(http.StatusUnprocessableEntity)
+		return Embedding{}, err
+	}
+
+	var titleEmbedding Embedding
+	json.Unmarshal(emb_resBody, &titleEmbedding)
+
+	return titleEmbedding, nil
+}
+
+func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		resBody, err := io.ReadAll(r.Body)
@@ -57,82 +120,25 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var searchbarContent SearchbarInput
-
-		json.Unmarshal(resBody, &searchbarContent)
-
-		ml_body := []byte(fmt.Sprintf("{\"movie_title\": \"%s\"}", searchbarContent.Data))
-		bodyReader := bytes.NewReader(ml_body)
-		res, err := http.Post(ML_SERVER+"/model/", "application/json", bodyReader)
+		err = json.Unmarshal(resBody, &searchbarContent)
 
 		if err != nil {
-			defer w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		emb_resBody, err := io.ReadAll(res.Body)
-
-		if err != nil {
-			fmt.Println("something went wrong in reading body")
 			defer w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
-		var titleEmbedding Embedding
+		titleEmbedding, err := getSearchbarInputEmbedding(&w, searchbarContent.Data)
 
-		json.Unmarshal(emb_resBody, &titleEmbedding)
-		psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-			"password=%s dbname=%s sslmode=disable",
-			host, port, user, password, dbname)
-
-		db, err := sql.Open("postgres", psqlInfo)
 		if err != nil {
-			defer w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer db.Close()
-
-		err = db.Ping()
-		if err != nil {
-			defer w.WriteHeader(http.StatusInternalServerError)
+			fmt.Printf("Search Input Embedding Error: %s\n", err)
 			return
 		}
 
-		rows, err := db.Query(`SELECT id, title, embedding FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
+		switch searchbarContent.SearchType {
+		case "semantic":
+			semanticSearch(&w, sh.db, &titleEmbedding)
 
-		if err != nil {
-			fmt.Printf("DB Error: %v\n", err)
-			defer w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
-
-		var similarTitles []SimilarTitle
-		fetchedEmbeddings = make(map[int]string)
-
-		for rows.Next() {
-			var smimilarT SimilarTitle
-			var str_embedding string
-			if err := rows.Scan(&smimilarT.Idx, &smimilarT.Title, &str_embedding); err != nil {
-				fmt.Printf("Scanning error %v\n", err)
-				defer w.WriteHeader(http.StatusUnprocessableEntity)
-				return
-			}
-			fetchedEmbeddings[smimilarT.Idx] = str_embedding
-			similarTitles = append(similarTitles, smimilarT)
-		}
-
-		similarTitlesMessage := struct {
-			Titles []SimilarTitle `json:"titles"`
-		}{
-			Titles: similarTitles,
-		}
-
-		similarTitlesBytes, err := json.Marshal(similarTitlesMessage)
-		if err != nil {
-			fmt.Printf("Problem with marshal: %v\n", err)
-			defer w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		}
-		w.Write(similarTitlesBytes)
 		return
 	}
 
@@ -140,8 +146,21 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
 
-	http.HandleFunc("/search", searchHandler)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		return
+	}
+	http.Handle("/search", &searchHandler{db: db})
 	fmt.Printf("Server runs on: %s\n", GO_SERVER)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
