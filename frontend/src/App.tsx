@@ -19,14 +19,22 @@ function App() {
   const [requestInputData, setRequestInputData] = useState("")
   const [movieArray, setMovieArray] = useState([])
   const [searchType, setSearchType] = useState<SearchType>("exact")
+  const [responseFailedError, setResponseFailedError] = useState(false)
+
 
   // block request while user is typing
   useEffect(() => {
+    setResponseFailedError(false)
+
+
     const timeOutId = setTimeout(() => setRequestInputData(searchData), 500)
     return () => clearTimeout(timeOutId)
   }, [searchData])
 
   useEffect(() => {
+    setResponseFailedError(false)
+
+    
     if (requestInputData != ""){ 
 
       const searchMessage: SearchMessage = { 
@@ -42,6 +50,8 @@ function App() {
       fetch('http://127.0.0.1:8080/search', requestOptions)
           .then(response => response.json())
           .then(data => setMovieArray(data['titles']))
+          .catch(() => setResponseFailedError(true))
+      
       }
   }, [requestInputData, searchType])
 
@@ -52,6 +62,7 @@ function App() {
     <>
       <h1>Movie Recommender</h1>
       <div className="card">
+        {responseFailedError && <p>Error occured</p>}
         <div>
         <input type='text' placeholder='Start searching :)'
         onChange={e => setSearchData(e.target.value)}/>
