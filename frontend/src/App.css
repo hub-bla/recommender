@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+
+.selected-search-type{
+  background-color: #213547;
+  color: #f9f9f9;
+}

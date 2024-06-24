@@ -1,4 +1,4 @@
-
+import './Movie.css'
 interface MovieProps {
     idx: Number
     title: string
@@ -6,7 +6,7 @@ interface MovieProps {
 
 export const Movie: React.FC<MovieProps> = ({idx, title}) => {
     return (
-        <div onClick={() => console.log(idx)}>
+        <div className='movie-component' onClick={() => console.log(idx)}>
             <h3>{title}</h3>
         </div>
     )
