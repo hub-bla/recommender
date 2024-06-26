@@ -36,9 +36,10 @@ type Embedding struct {
 	Data []float32 `json:"embedding"`
 }
 
-type SimilarTitle struct {
-	Idx   int    `json:"id"`
-	Title string `json:"title"`
+type SimilarBook struct {
+	Idx     int    `json:"id"`
+	Title   string `json:"title"`
+	ImgPath string `json:"img_path"`
 }
 
 type SearchbarInput struct {
@@ -48,22 +49,22 @@ type SearchbarInput struct {
 
 func sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
 
-	var similarTitles []SimilarTitle
+	var similarBooks []SimilarBook
 
 	for rows.Next() {
-		var smimilarT SimilarTitle
-		if err := rows.Scan(&smimilarT.Idx, &smimilarT.Title); err != nil {
+		var smimilarB SimilarBook
+		if err := rows.Scan(&smimilarB.Idx, &smimilarB.Title, &smimilarB.ImgPath); err != nil {
 			fmt.Printf("Scanning error %v\n", err)
 			defer (*w).WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
-		similarTitles = append(similarTitles, smimilarT)
+		similarBooks = append(similarBooks, smimilarB)
 	}
 
 	similarTitlesMessage := struct {
-		Titles []SimilarTitle `json:"titles"`
+		Books []SimilarBook `json:"similar_books"`
 	}{
-		Titles: similarTitles,
+		Books: similarBooks,
 	}
 
 	similarTitlesBytes, err := json.Marshal(similarTitlesMessage)
@@ -129,10 +130,10 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			rows, err = sh.db.Query(`SELECT id, title FROM books ORDER BY title_embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
+			rows, err = sh.db.Query(`SELECT id, title, img_path FROM books ORDER BY title_embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
 
 		case "exact":
-			rows, err = sh.db.Query(`SELECT id, title FROM books WHERE lower(title) like  '%'||lower(($1))||'%' LIMIT 3`, searchbarContent.Data)
+			rows, err = sh.db.Query(`SELECT id, title, img_path FROM books WHERE lower(title) like  '%'||lower(($1))||'%' LIMIT 3`, searchbarContent.Data)
 		default:
 			fmt.Printf("Error: Type of search not specified\n")
 			defer w.WriteHeader(http.StatusUnprocessableEntity)

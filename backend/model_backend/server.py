@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class Message(BaseModel):
-    movie_title: str
+    book_title: str
 
 model = SentenceTransformer('Mihaiii/gte-micro-v2')
 
@@ -18,4 +18,4 @@ async def root():
 
 @app.post("/model/")
 async def create_embedding(message: Message):
-    return {"embedding": model.encode(message.movie_title).tolist()}
+    return {"embedding": model.encode(message.book_title).tolist()}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { Movie } from './modules/Movie/Movie'
+import { Book } from './modules/Book/Book'
 
-interface MovieInterface {
+interface BookInterface {
   id: Number
   title: string
+  img_path: string
 }
 
 interface SearchMessage{
@@ -17,7 +18,7 @@ type SearchType = "exact" | "semantic"
 function App() {
   const [searchData, setSearchData] = useState("")
   const [requestInputData, setRequestInputData] = useState("")
-  const [movieArray, setMovieArray] = useState([])
+  const [bookArray, setBookArray] = useState([])
   const [searchType, setSearchType] = useState<SearchType>("exact")
   const [responseFailedError, setResponseFailedError] = useState(false)
 
@@ -49,18 +50,20 @@ function App() {
 
       fetch('http://127.0.0.1:8080/search', requestOptions)
           .then(response => response.json())
-          .then(data => setMovieArray(data['titles']))
+          .then(data => {
+            setBookArray(data['similar_books'] ? data['similar_books'] : [])
+          })
           .catch(() => setResponseFailedError(true))
       
       }
   }, [requestInputData, searchType])
 
 
-  const movies = movieArray.map((movie:MovieInterface) => <Movie key={movie.id.toString()} idx={movie.id} title={movie.title}/>)
+  const books = bookArray.map((book:BookInterface) => <Book key={book.id.toString()} idx={book.id} title={book.title} img_path={book.img_path}/>)
   
   return (
     <>
-      <h1>Movie Recommender</h1>
+      <h1>Book Recommender</h1>
       <div className="card">
         {responseFailedError && <p>Error occured</p>}
         <div>
@@ -72,7 +75,7 @@ function App() {
         onClick={() => setSearchType("semantic")}>SEMANTIC</button>
         </div>
         
-        {movies}
+        {books}
       </div>
 
     </>
