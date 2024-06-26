@@ -24,8 +24,6 @@ const (
 	dbname   = "movie_recommender"
 )
 
-// var db sql.DB
-
 // TODO: handle db connection properly
 // make dynamic number of similar films in request
 
@@ -48,14 +46,7 @@ type SearchbarInput struct {
 	SearchType string `json:"search_type"`
 }
 
-func semanticSearch(w *http.ResponseWriter, db *sql.DB, titleEmbedding *Embedding) {
-	rows, err := db.Query(`SELECT id, title FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector((*titleEmbedding).Data))
-
-	if err != nil {
-		fmt.Printf("DB Error: %v\n", err)
-		defer (*w).WriteHeader(http.StatusInternalServerError)
-		return
-	}
+func sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
 
 	var similarTitles []SimilarTitle
 
@@ -127,18 +118,33 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		titleEmbedding, err := getSearchbarInputEmbedding(&w, searchbarContent.Data)
+		var rows *sql.Rows
+		switch searchbarContent.SearchType {
+		case "semantic":
 
-		if err != nil {
-			fmt.Printf("Search Input Embedding Error: %s\n", err)
+			titleEmbedding, err := getSearchbarInputEmbedding(&w, searchbarContent.Data)
+
+			if err != nil {
+				fmt.Printf("Search Input Embedding Error: %s\n", err)
+				return
+			}
+
+			rows, err = sh.db.Query(`SELECT id, title FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
+
+		case "exact":
+			rows, err = sh.db.Query(`SELECT id, title FROM title_embeddings WHERE lower(title) like  '%'||lower(($1))||'%' LIMIT 3`, searchbarContent.Data)
+		default:
+			fmt.Printf("Error: Type of search not specified\n")
+			defer w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
-		switch searchbarContent.SearchType {
-		case "semantic":
-			semanticSearch(&w, sh.db, &titleEmbedding)
-
+		if err != nil {
+			fmt.Printf("DB Error: %v\n", err)
+			defer w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+		sendSearchResults(&w, rows)
 		return
 	}
 
