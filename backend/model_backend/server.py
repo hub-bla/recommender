@@ -7,11 +7,9 @@ class Message(BaseModel):
     movie_title: str
 
 model = SentenceTransformer('Mihaiii/gte-micro-v2')
-sentences = ['This is an example', 'Each sentence is converted']
 
 
 app = FastAPI()
-
 
 @app.get("/")
 async def root():

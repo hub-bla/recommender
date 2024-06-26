@@ -76,7 +76,7 @@ func sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
 }
 
 func getSearchbarInputEmbedding(w *http.ResponseWriter, data string) (Embedding, error) {
-	ml_body := []byte(fmt.Sprintf("{\"movie_title\": \"%s\"}", data))
+	ml_body := []byte(fmt.Sprintf("{\"book_title\": \"%s\"}", data))
 	bodyReader := bytes.NewReader(ml_body)
 	res, err := http.Post(ML_SERVER+"/model/", "application/json", bodyReader)
 
@@ -129,10 +129,10 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			rows, err = sh.db.Query(`SELECT id, title FROM title_embeddings ORDER BY embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
+			rows, err = sh.db.Query(`SELECT id, title FROM books ORDER BY title_embedding <=> ($1) LIMIT 3`, pgvector.NewVector(titleEmbedding.Data))
 
 		case "exact":
-			rows, err = sh.db.Query(`SELECT id, title FROM title_embeddings WHERE lower(title) like  '%'||lower(($1))||'%' LIMIT 3`, searchbarContent.Data)
+			rows, err = sh.db.Query(`SELECT id, title FROM books WHERE lower(title) like  '%'||lower(($1))||'%' LIMIT 3`, searchbarContent.Data)
 		default:
 			fmt.Printf("Error: Type of search not specified\n")
 			defer w.WriteHeader(http.StatusUnprocessableEntity)
