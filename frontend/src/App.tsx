@@ -2,18 +2,24 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { Book } from './modules/Book/Book'
 
+
 interface BookInterface {
-  id: Number
+  id: number
   title: string
   img_path: string
 }
+
+type SearchType = "exact" | "semantic"
 
 interface SearchMessage{
   searchbar_input: string
   search_type: SearchType
 }
 
-type SearchType = "exact" | "semantic"
+interface RecommendMessage {
+  id: string
+}
+
 
 function App() {
   const [searchData, setSearchData] = useState("")
@@ -21,6 +27,28 @@ function App() {
   const [bookArray, setBookArray] = useState([])
   const [searchType, setSearchType] = useState<SearchType>("exact")
   const [responseFailedError, setResponseFailedError] = useState(false)
+  const [similarToTitle, setSimilarToTitle] = useState("")
+
+  const findSimilarBooks = (book_id:number, title: string) => {
+    
+    const recommendMessage = {
+      "book_id": book_id
+    }
+
+    const requestOptions = {
+      method: 'POST',
+      body: JSON.stringify(recommendMessage)
+    }
+
+    fetch('http://127.0.0.1:8080/recommend', requestOptions)
+          .then(response => response.json())
+          .then(data => {
+            setBookArray(data['similar_books'] ? data['similar_books'] : [])
+            setSimilarToTitle(title)
+          })
+          .catch(() => setResponseFailedError(true))
+    
+  }
 
 
   // block request while user is typing
@@ -55,11 +83,17 @@ function App() {
           })
           .catch(() => setResponseFailedError(true))
       
+      setSimilarToTitle("")
       }
   }, [requestInputData, searchType])
 
 
-  const books = bookArray.map((book:BookInterface) => <Book key={book.id.toString()} idx={book.id} title={book.title} img_path={book.img_path}/>)
+  const books = bookArray.map((book:BookInterface) => <Book 
+                                                      key={book.id.toString()} 
+                                                      idx={book.id} 
+                                                      title={book.title} 
+                                                      img_path={book.img_path}
+                                                      findSimilarBooks={findSimilarBooks}/>)
   
   return (
     <>
@@ -74,7 +108,7 @@ function App() {
         <button className={searchType == "semantic" ? "selected-search-type" : ""}
         onClick={() => setSearchType("semantic")}>SEMANTIC</button>
         </div>
-        
+        {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
         {books}
       </div>
 
