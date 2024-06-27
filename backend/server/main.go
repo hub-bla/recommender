@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 
+	httprequesthandler "example.com/http_request_handler"
 	_ "github.com/lib/pq"
 	"github.com/pgvector/pgvector-go"
 )
@@ -24,11 +25,11 @@ const (
 	dbname   = "movie_recommender"
 )
 
-// TODO: handle db connection properly
-// make dynamic number of similar films in request
+// TODO: make dynamic number of similar films in request
 
 type searchHandler struct {
-	db *sql.DB
+	db     *sql.DB
+	httpRH httprequesthandler.HTTPRequestHandler
 }
 
 type Embedding struct {
@@ -47,7 +48,7 @@ type SearchbarInput struct {
 	SearchType string `json:"search_type"`
 }
 
-func sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
+func (sh *searchHandler) sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
 
 	var similarBooks []SimilarBook
 
@@ -61,19 +62,13 @@ func sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
 		similarBooks = append(similarBooks, smimilarB)
 	}
 
-	similarTitlesMessage := struct {
+	similarBooksMessage := struct {
 		Books []SimilarBook `json:"similar_books"`
 	}{
 		Books: similarBooks,
 	}
 
-	similarTitlesBytes, err := json.Marshal(similarTitlesMessage)
-	if err != nil {
-		fmt.Printf("Problem with marshal: %v\n", err)
-		defer (*w).WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	(*w).Write(similarTitlesBytes)
+	sh.httpRH.SendResponse(w, similarBooksMessage, "sending similar Books", http.StatusOK, "success")
 }
 
 func getSearchbarInputEmbedding(w *http.ResponseWriter, data string) (Embedding, error) {
@@ -126,7 +121,12 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			titleEmbedding, err := getSearchbarInputEmbedding(&w, searchbarContent.Data)
 
 			if err != nil {
-				fmt.Printf("Search Input Embedding Error: %s\n", err)
+				message := "unable to retrieve embedding from server"
+				errorMessage := httprequesthandler.ErrorMessage{
+					Error:   "internal server error",
+					Message: message,
+				}
+				sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusInternalServerError, "error")
 				return
 			}
 
@@ -135,20 +135,27 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "exact":
 			rows, err = sh.db.Query(`SELECT id, title, img_path FROM books WHERE lower(title) like  '%'||lower(($1))||'%' LIMIT 3`, searchbarContent.Data)
 		default:
-			fmt.Printf("Error: Type of search not specified\n")
-			defer w.WriteHeader(http.StatusUnprocessableEntity)
+			message := "value for 'search_type' is not specified or incorrect"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "bad request",
+				Message: message,
+			}
+			sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusBadRequest, "error")
 			return
 		}
 
 		if err != nil {
-			fmt.Printf("DB Error: %v\n", err)
-			defer w.WriteHeader(http.StatusInternalServerError)
+			message := "unable to retrieve data from database"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "internal server error",
+				Message: message,
+			}
+			sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusInternalServerError, "error")
 			return
 		}
-		sendSearchResults(&w, rows)
+		sh.sendSearchResults(&w, rows)
 		return
 	}
-
 	defer w.WriteHeader(http.StatusBadRequest)
 }
 
