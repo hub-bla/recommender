@@ -50,3 +50,13 @@
   background-color: #213547;
   color: #f9f9f9;
 }
+
+button {
+  width: 175px;
+}
+
+.search-type-container {
+  width: 100%;
+  display: flex;
+  justify-content: space-evenly;
+}

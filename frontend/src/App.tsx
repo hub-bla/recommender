@@ -110,9 +110,9 @@ function App() {
             onChange={e => setSearchData(e.target.value)}  value={searchData}/>
             <div className='search-type-container'>
 
-            <button className={searchType == "exact" ? "selected-search-type" : ""}
+            <button className={"left-button " + (searchType == "exact" ? "selected-search-type" : "")}
             onClick={() => setSearchType("exact")}>EXACT</button>
-            <button className={searchType == "semantic" ? "selected-search-type" : ""}
+            <button className={"right-button " + (searchType == "semantic" ? "selected-search-type" : "")}
             onClick={() => setSearchType("semantic")}>SEMANTIC</button>
             </div>
           </div>
