@@ -101,17 +101,22 @@ function App() {
   
   return (
     <>
-      <h1>Book Recommender</h1>
-      <div className="card">
-        {responseFailedError && <p>Error occured</p>}
-        <div>
-        <input type='text' placeholder='Start searching :)'
-        onChange={e => setSearchData(e.target.value)}  value={searchData}/>
-        <button className={searchType == "exact" ? "selected-search-type" : ""}
-        onClick={() => setSearchType("exact")}>EXACT</button>
-        <button className={searchType == "semantic" ? "selected-search-type" : ""}
-        onClick={() => setSearchType("semantic")}>SEMANTIC</button>
-        </div>
+      <div className='nav-container'>
+        <h1>Book Recommender</h1>
+          <div className="card">
+            {responseFailedError && <p>Error occured</p>}
+            <div className='searchbar-container'>
+            <input id='searchbar' type='text' placeholder='Start searching :)'
+            onChange={e => setSearchData(e.target.value)}  value={searchData}/>
+            <div className='search-type-container'>
+
+            <button className={searchType == "exact" ? "selected-search-type" : ""}
+            onClick={() => setSearchType("exact")}>EXACT</button>
+            <button className={searchType == "semantic" ? "selected-search-type" : ""}
+            onClick={() => setSearchType("semantic")}>SEMANTIC</button>
+            </div>
+          </div>
+      </div>
         {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
         <Suspense fallback={<div>Loading...</div>}>
         {books}
