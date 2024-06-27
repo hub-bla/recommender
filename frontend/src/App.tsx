@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import './App.css'
 import { Book } from './modules/Book/Book'
 
@@ -29,6 +29,7 @@ function App() {
   const [responseFailedError, setResponseFailedError] = useState(false)
   const [similarToTitle, setSimilarToTitle] = useState("")
 
+
   const findSimilarBooks = (book_id:number, title: string) => {
     
     const recommendMessage: RecommendMessage = {
@@ -45,6 +46,8 @@ function App() {
           .then(data => {
             setBookArray(data['similar_books'] ? data['similar_books'] : [])
             setSimilarToTitle(title)
+            setSearchData("")
+            setRequestInputData("")
           })
           .catch(() => setResponseFailedError(true))
     
@@ -103,14 +106,16 @@ function App() {
         {responseFailedError && <p>Error occured</p>}
         <div>
         <input type='text' placeholder='Start searching :)'
-        onChange={e => setSearchData(e.target.value)}/>
+        onChange={e => setSearchData(e.target.value)}  value={searchData}/>
         <button className={searchType == "exact" ? "selected-search-type" : ""}
         onClick={() => setSearchType("exact")}>EXACT</button>
         <button className={searchType == "semantic" ? "selected-search-type" : ""}
         onClick={() => setSearchType("semantic")}>SEMANTIC</button>
         </div>
         {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
+        <Suspense fallback={<div>Loading...</div>}>
         {books}
+        </Suspense>
       </div>
 
     </>
