@@ -27,9 +27,13 @@ const (
 
 // TODO: make dynamic number of similar films in request
 
-type searchHandler struct {
+type httpHandler struct {
 	db     *sql.DB
 	httpRH httprequesthandler.HTTPRequestHandler
+}
+
+type searchHandler struct {
+	httpHandler
 }
 
 type Embedding struct {
@@ -48,16 +52,18 @@ type SearchbarInput struct {
 	SearchType string `json:"search_type"`
 }
 
-func (sh *searchHandler) sendSearchResults(w *http.ResponseWriter, rows *sql.Rows) {
+func searchResults(w *http.ResponseWriter, rows *sql.Rows) (struct {
+	Books []SimilarBook "json:\"similar_books\""
+}, error) {
 
 	var similarBooks []SimilarBook
 
 	for rows.Next() {
 		var smimilarB SimilarBook
 		if err := rows.Scan(&smimilarB.Idx, &smimilarB.Title, &smimilarB.ImgPath); err != nil {
-			fmt.Printf("Scanning error %v\n", err)
-			defer (*w).WriteHeader(http.StatusUnprocessableEntity)
-			return
+			return struct {
+				Books []SimilarBook `json:"similar_books"`
+			}{}, fmt.Errorf("Scanning error %v\n", err)
 		}
 		similarBooks = append(similarBooks, smimilarB)
 	}
@@ -68,7 +74,7 @@ func (sh *searchHandler) sendSearchResults(w *http.ResponseWriter, rows *sql.Row
 		Books: similarBooks,
 	}
 
-	sh.httpRH.SendResponse(w, similarBooksMessage, "sending similar Books", http.StatusOK, "success")
+	return similarBooksMessage, nil
 }
 
 func getSearchbarInputEmbedding(w *http.ResponseWriter, data string) (Embedding, error) {
@@ -101,16 +107,25 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resBody, err := io.ReadAll(r.Body)
 
 		if err != nil {
-			fmt.Println("something went wrong in reading body")
-			defer w.WriteHeader(http.StatusUnprocessableEntity)
+			message := "could not read request body"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "unprocessable entity",
+				Message: message,
+			}
+			sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusUnprocessableEntity, "error")
 			return
 		}
 
 		var searchbarContent SearchbarInput
 		err = json.Unmarshal(resBody, &searchbarContent)
 
-		if err != nil {
-			defer w.WriteHeader(http.StatusUnprocessableEntity)
+		if err != nil || searchbarContent.Data == "" {
+			message := "searchbar data is corrupted or missing"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "unprocessable entity",
+				Message: message,
+			}
+			sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusUnprocessableEntity, "error")
 			return
 		}
 
@@ -153,10 +168,93 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusInternalServerError, "error")
 			return
 		}
-		sh.sendSearchResults(&w, rows)
+
+		similarBooksMessage, err := searchResults(&w, rows)
+		if err != nil {
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "unprocessable entity",
+				Message: fmt.Sprintf("%v", err),
+			}
+			sh.httpRH.SendResponse(&w, errorMessage, errorMessage.Message, http.StatusUnprocessableEntity, "error")
+			return
+		}
+
+		sh.httpRH.SendResponse(&w, similarBooksMessage, "sending similar Books", http.StatusOK, "success")
 		return
 	}
-	defer w.WriteHeader(http.StatusBadRequest)
+	message := "wrong request method"
+	errorMessage := httprequesthandler.ErrorMessage{
+		Error:   "bad request",
+		Message: message,
+	}
+	sh.httpRH.SendResponse(&w, errorMessage, message, http.StatusBadRequest, "error")
+}
+
+type recommendHandler struct {
+	httpHandler
+}
+
+type BookIdxMessage struct {
+	Idx string `json:"book_id"`
+}
+
+func (rh *recommendHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		resBody, err := io.ReadAll(r.Body)
+
+		if err != nil {
+			message := "could not read request body"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "unprocessable entity",
+				Message: message,
+			}
+			rh.httpRH.SendResponse(&w, errorMessage, message, http.StatusUnprocessableEntity, "error")
+			return
+		}
+
+		var bookIdxMessage BookIdxMessage
+		err = json.Unmarshal(resBody, &bookIdxMessage)
+
+		if err != nil || bookIdxMessage.Idx == "" {
+			message := "book id is corrupted or missing"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "unprocessable entity",
+				Message: message,
+			}
+			rh.httpRH.SendResponse(&w, errorMessage, message, http.StatusUnprocessableEntity, "error")
+			return
+		}
+
+		rows, err := rh.db.Query(`
+			SELECT 
+			id, title, img_path 
+			FROM books 
+			where id != CAST(($1) AS INTEGER) 
+			ORDER BY book_embedding <=> 
+			(SELECT book_embedding 
+			FROM books WHERE id = CAST(($1) AS INTEGER)) 
+			LIMIT 3;`, bookIdxMessage.Idx)
+		if err != nil {
+			message := "unable to retrieve data from database"
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "internal server error",
+				Message: message,
+			}
+			rh.httpRH.SendResponse(&w, errorMessage, fmt.Sprintf("%v", err), http.StatusInternalServerError, "error")
+			return
+		}
+		similarBooksMessage, err := searchResults(&w, rows)
+		if err != nil {
+			errorMessage := httprequesthandler.ErrorMessage{
+				Error:   "unprocessable entity",
+				Message: fmt.Sprintf("%v", err),
+			}
+			rh.httpRH.SendResponse(&w, errorMessage, errorMessage.Message, http.StatusUnprocessableEntity, "error")
+			return
+		}
+
+		rh.httpRH.SendResponse(&w, similarBooksMessage, "sending similar Books", http.StatusOK, "success")
+	}
 }
 
 func main() {
@@ -174,7 +272,8 @@ func main() {
 	if err != nil {
 		return
 	}
-	http.Handle("/search", &searchHandler{db: db})
+	http.Handle("/search", &searchHandler{httpHandler{db: db}})
+	http.Handle("/recommend", &recommendHandler{httpHandler{db: db}})
 	fmt.Printf("Server runs on: %s\n", GO_SERVER)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

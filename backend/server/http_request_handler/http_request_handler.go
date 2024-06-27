@@ -15,15 +15,15 @@ type ErrorResponse struct {
 type Logger struct {
 }
 
-var Reset = "\033[0m"
-var Red = "\033[31m"
-var Green = "\033[32m"
-var Yellow = "\033[33m"
-var Blue = "\033[34m"
-var Magenta = "\033[35m"
-var Cyan = "\033[36m"
-var Gray = "\033[37m"
-var White = "\033[97m"
+const Reset = "\033[0m"
+const Red = "\033[31m"
+const Green = "\033[32m"
+const Yellow = "\033[33m"
+const Blue = "\033[34m"
+const Magenta = "\033[35m"
+const Cyan = "\033[36m"
+const Gray = "\033[37m"
+const White = "\033[97m"
 
 func (logger *Logger) logMessage(message string, messageCode int, logType string) {
 	if logType == "success" {
@@ -37,14 +37,6 @@ func (logger *Logger) logMessage(message string, messageCode int, logType string
 type HTTPRequestHandler struct {
 	logger Logger
 }
-
-// HTTP/1.1 400 Bad Request
-// Content-Type: application/json
-
-// {
-//   "error": "Bad Request",
-//   "message": "Missing required fields: 'field1', 'field2'"
-// }
 
 type ErrorMessage struct {
 	Error   string `json:"error"`
@@ -63,7 +55,7 @@ func (httpRH *HTTPRequestHandler) SendResponse(w *http.ResponseWriter,
 
 	if err != nil {
 		message := "failed to encode and send response"
-		httpRH.logger.logMessage("Error: Failed to encode and send response", http.StatusInternalServerError, "error")
+		httpRH.logger.logMessage(message, http.StatusInternalServerError, "error")
 		errorMessage := ErrorMessage{
 			Error:   "Internal Server Error",
 			Message: message,
