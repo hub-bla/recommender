@@ -17,7 +17,7 @@ interface SearchMessage{
 }
 
 interface RecommendMessage {
-  id: string
+  book_id: string
 }
 
 
@@ -31,8 +31,8 @@ function App() {
 
   const findSimilarBooks = (book_id:number, title: string) => {
     
-    const recommendMessage = {
-      "book_id": book_id
+    const recommendMessage: RecommendMessage = {
+      "book_id": book_id.toString()
     }
 
     const requestOptions = {
