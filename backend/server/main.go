@@ -181,7 +181,7 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									id, title, img_path 
 									FROM books 
 									WHERE lower(title) like '%'||lower(($1))||'%' 
-									LIMIT 3;`, searchbarContent.Data, searchbarContent.Limit)
+									LIMIT ($2);`, searchbarContent.Data, searchbarContent.Limit)
 		default:
 			message := "value for 'search_type' is not specified or incorrect"
 			errorMessage := httprequesthandler.ErrorMessage{
