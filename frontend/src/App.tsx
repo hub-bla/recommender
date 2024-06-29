@@ -27,6 +27,7 @@ function App() {
   const [bookArray, setBookArray] = useState([])
   const [searchType, setSearchType] = useState<SearchType>("exact")
   const [responseFailedError, setResponseFailedError] = useState(false)
+  const [notFoundBooksError, setNotFoundBooksError] = useState(false)
   const [similarToTitle, setSimilarToTitle] = useState("")
 
 
@@ -83,7 +84,14 @@ function App() {
       fetch('http://127.0.0.1:8080/search', requestOptions)
           .then(response => response.json())
           .then(data => {
-            setBookArray(data['similar_books'] ? data['similar_books'] : [])
+            const booksData = data['similar_books'] ? data['similar_books'] : []
+            if (booksData.length === 0){
+              setNotFoundBooksError(true)
+              setBookArray([])
+            }else{
+              setNotFoundBooksError(false)
+              setBookArray(booksData)
+            }
           })
           .catch(() => setResponseFailedError(true))
       
@@ -99,6 +107,7 @@ function App() {
                                                       img_path={book.img_path}
                                                       findSimilarBooks={findSimilarBooks}/>)
   
+  console.log(notFoundBooksError)
   return (
     <>
       <div className='nav-container'>
@@ -119,6 +128,7 @@ function App() {
       </div>
         {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
         <Suspense fallback={<div>Loading...</div>}>
+        {notFoundBooksError && <div>Could not find any books</div>}
         {books}
         </Suspense>
       </div>
