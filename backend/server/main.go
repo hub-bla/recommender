@@ -207,7 +207,7 @@ func (sh *searchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sh.httpRH.SendResponse(&w, similarBooksMessage, "sending similar Books", http.StatusOK, "success")
+		sh.httpRH.SendResponse(&w, similarBooksMessage, "POST /search/ - sending similar Books", http.StatusOK, "success")
 		return
 	}
 	sh.handleBadRequestError(&w)
@@ -270,7 +270,7 @@ func (rh *recommendHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rh.httpRH.SendResponse(&w, similarBooksMessage, "sending similar Books", http.StatusOK, "success")
+		rh.httpRH.SendResponse(&w, similarBooksMessage, "POST /recommend/ sending recommended Books", http.StatusOK, "success")
 		return
 	}
 	rh.handleBadRequestError(&w)
