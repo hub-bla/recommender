@@ -3,29 +3,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  margin: 0 0;
   justify-content: flex-start ;
   align-items: center;
-}
-button {
-  width: 175px;
-}
-
-
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
 }
 
 #searchbar {
@@ -43,8 +22,6 @@ button {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
- 
-
 }
 
 .searchbar-container{
@@ -53,7 +30,6 @@ button {
   align-items: center;
   justify-content: center;
 }
-
 
 .selected-search-type{
   background-color: #213547;
