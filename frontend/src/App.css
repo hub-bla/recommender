@@ -7,6 +7,20 @@
   align-items: center;
 }
 
+.recommend-container{
+  margin: 30px 20px;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.chosen-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 450px;
+}
+
 #searchbar {
   margin-bottom: 25px;
   width: 350px;
@@ -43,9 +57,10 @@
 }
 
 .search-results-container{
-  margin: 30px 20px;
   display: flex;
-  justify-content: space-evenly;
+  justify-content: center;
   align-items: center;
   flex-wrap: wrap;
+  width: 100%;
+  /* overflow: scroll; */
 }

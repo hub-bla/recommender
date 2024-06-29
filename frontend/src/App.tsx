@@ -7,6 +7,7 @@ interface BookInterface {
   id: number
   title: string
   img_path: string
+  is_chosen: boolean
 }
 
 type SearchType = "exact" | "semantic"
@@ -20,7 +21,6 @@ interface RecommendMessage {
   book_id: string
 }
 
-
 function App() {
   const [searchData, setSearchData] = useState("")
   const [requestInputData, setRequestInputData] = useState("")
@@ -30,8 +30,9 @@ function App() {
   const [notFoundBooksError, setNotFoundBooksError] = useState(false)
   const [similarToTitle, setSimilarToTitle] = useState("")
 
+  const [chosenBook, setChosenBook] = useState<BookInterface>()
 
-  const findSimilarBooks = (book_id:number, title: string) => {
+  const findSimilarBooks = (book_id:number, title: string, img_path: string) => {
     
     const recommendMessage: RecommendMessage = {
       "book_id": book_id.toString()
@@ -47,10 +48,17 @@ function App() {
           .then(data => {
             setBookArray(data['similar_books'] ? data['similar_books'] : [])
             setSimilarToTitle(title)
+            setChosenBook({
+              "id": book_id,
+              "title": title,
+              "img_path": img_path,
+              "is_chosen": true
+            })
             setSearchData("")
             setRequestInputData("")
           })
           .catch(() => setResponseFailedError(true))
+    
     
 
   }
@@ -105,9 +113,10 @@ function App() {
                                                       idx={book.id} 
                                                       title={book.title} 
                                                       img_path={book.img_path}
+                                                      isChosen={false}
                                                       findSimilarBooks={findSimilarBooks}/>)
   
-  console.log(notFoundBooksError)
+  
   return (
     <div className='app-container'>
       <div className='nav-container'>
@@ -127,13 +136,23 @@ function App() {
           </div>
       </div>
       </div>
-      <div className='search-results-container'>
-          {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
-          <Suspense fallback={<ReactLoading type={"spinningBubbles"} color={"#213547"} height={'100px'} width={'100px'} />}>
-          {notFoundBooksError && <div>Could not find any books</div>}
-          {books}
-          </Suspense>
-        </div>
+      <div className='recommend-container'>
+        {(chosenBook && similarToTitle != "") ? <div className='chosen-book'> 
+            <p>Books similar to: {similarToTitle}</p>
+            <Book key={chosenBook.id} 
+            idx={chosenBook.id} 
+            title={chosenBook.title} 
+            img_path={chosenBook.img_path} 
+            isChosen={true} 
+            findSimilarBooks={findSimilarBooks}/>
+            </div> : <></>}
+          <div className='search-results-container'>
+            <Suspense fallback={<ReactLoading type={"spinningBubbles"} color={"#213547"} height={'100px'} width={'100px'} />}>
+            {notFoundBooksError && <div>Could not find any books</div>}
+            {books}
+            </Suspense>
+          </div>
+      </div>
     </div>
   )
 }

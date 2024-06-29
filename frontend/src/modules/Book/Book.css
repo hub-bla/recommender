@@ -1,14 +1,24 @@
 .movie-component {
-    cursor: pointer;
     height: 100%;
     width: 300px;
     height: 450px;
     margin: 5px;
 }
 
+.pointer{
+    cursor: pointer;
+}
 
 .book-cover{
     width: 300px;
     height: 450px;
+    object-position: center;
     object-fit: cover
+}
+
+.no-image{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-overflow: ellipsis;
 }
