@@ -1,15 +1,17 @@
-
+.app-container{
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0 0;
+  justify-content: flex-start ;
+  align-items: center;
+}
 button {
   width: 175px;
 }
 
 
-#root {
-  max-width: 1280px;
-  margin: 0 0;
-  padding: 2rem;
-  text-align: center;
-}
 
 @keyframes logo-spin {
   from {
@@ -35,12 +37,13 @@ button {
 }
 
 .nav-container{
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
+ 
 
 }
 
@@ -61,4 +64,12 @@ button {
   width: 100%;
   display: flex;
   justify-content: space-evenly;
+}
+
+.search-results-container{
+  margin: 30px 20px;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  flex-wrap: wrap;
 }

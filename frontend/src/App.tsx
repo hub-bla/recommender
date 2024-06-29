@@ -109,7 +109,7 @@ function App() {
   
   console.log(notFoundBooksError)
   return (
-    <>
+    <div className='app-container'>
       <div className='nav-container'>
         <h1>Book Recommender</h1>
           <div className="card">
@@ -126,15 +126,15 @@ function App() {
             </div>
           </div>
       </div>
-      <div>
+      </div>
+      <div className='search-results-container'>
           {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
           <Suspense fallback={<ReactLoading type={"spinningBubbles"} color={"#213547"} height={'100px'} width={'100px'} />}>
           {notFoundBooksError && <div>Could not find any books</div>}
           {books}
           </Suspense>
         </div>
-      </div>
-    </>
+    </div>
   )
 }
 
