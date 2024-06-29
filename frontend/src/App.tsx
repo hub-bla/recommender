@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import './App.css'
 import { Book } from './modules/Book/Book'
-
+import ReactLoading from 'react-loading';
 
 interface BookInterface {
   id: number
@@ -126,13 +126,14 @@ function App() {
             </div>
           </div>
       </div>
-        {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
-        <Suspense fallback={<div>Loading...</div>}>
-        {notFoundBooksError && <div>Could not find any books</div>}
-        {books}
-        </Suspense>
+      <div>
+          {similarToTitle != "" ? <p>Books similar to: {similarToTitle}</p> : <></>}
+          <Suspense fallback={<ReactLoading type={"spinningBubbles"} color={"#213547"} height={'100px'} width={'100px'} />}>
+          {notFoundBooksError && <div>Could not find any books</div>}
+          {books}
+          </Suspense>
+        </div>
       </div>
-
     </>
   )
 }
