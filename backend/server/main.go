@@ -27,8 +27,6 @@ const (
 
 const DEFAULT_LIMIT = 50
 
-// TODO: make dynamic number of similar films in request
-
 type httpHandler struct {
 	db     *sql.DB
 	httpRH httprequesthandler.HTTPRequestHandler
