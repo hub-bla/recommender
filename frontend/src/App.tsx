@@ -138,7 +138,7 @@ function App() {
       </div>
       <div className='recommend-container'>
         {(chosenBook && similarToTitle != "") ? <div className='chosen-book'> 
-            <p>Books similar to: {similarToTitle}</p>
+            <p className='similar-title'>Books similar to: {similarToTitle}</p>
             <Book key={chosenBook.id} 
             idx={chosenBook.id} 
             title={chosenBook.title} 
